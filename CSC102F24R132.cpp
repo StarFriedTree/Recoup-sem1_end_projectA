@@ -23,7 +23,7 @@ namespace print{
 }
 
 namespace load{
-    string* users(const string address, int& size);
+    string* users(const string &address, int& size);
     void parseUsers(string* users, string* usernames, string* passwords, bool* slots, const int &size);
     string* fetchLines(const string &address, int &size, string &header);
     void existsOrCreate(const string &address, string header);
@@ -31,8 +31,8 @@ namespace load{
 }
 
 namespace store{
-    void login(const string address, string* usernames, string* passwords, bool* slots, const int size);
-    void writeLines(const string address, string* lines, const int size, string header);
+    void login(const string &address, string* usernames, string* passwords, bool* slots, const int &size);
+    void writeLines(const string &address, string* lines, const int size, string header);
     void encrypt(string &text);
     char shiftLetter(char letter, int shift);
 }
@@ -56,7 +56,7 @@ namespace crud{
     bool checkPassword(string password);
     void generatePwd(string &password);
     int getEmptySlot(bool* slots, const int size);
-    int searchSlot(string username, string* usernames, int size);
+    int searchSlot(string item, string* items, int size);
     void modifyUser(string &username, string &password, string* usernames, const int size, int margin);
     void deleteUser(string* usernames, string* passwords, bool* slots, int index);
     void deleteUserProfile(bool isCreditor, const string &toDelete);
@@ -1100,7 +1100,7 @@ bool endsWith(const string &check, const string &end){
 }
 
 int findMatchByFirstCol(string word, string* lines, const int &size){
-    word = word + ',';
+    word.push_back(',');
     for (int i = 0; i < size; i++)
         if (startsWith(lines[i], word))
             return i;
@@ -1135,7 +1135,7 @@ string* tokenizer(const string &X, char delimiter, int& counter){
                 delimiterIndex = j;
                 break;
             }
-            element = element + X[j];
+            element.push_back(X[j]);
         }
         arr[i] = element;
     }
@@ -1189,7 +1189,7 @@ string getSubString(const string &text, int start, int num){
 }
 
 
-string* load::users(const string address, int& size){
+string* load::users(const string &address, int& size){
     size = 0;
     ifstream fin;
     ofstream fout;
@@ -1198,7 +1198,7 @@ string* load::users(const string address, int& size){
     fin.open(address);
 
     size = countLines(address) - 1;
-    string* users = new string[size + 5];
+    string* users = new string[size + 5]; //declaring array with 5 extra slots
 
     string line = "";
     getline(fin, line);
@@ -1208,9 +1208,9 @@ string* load::users(const string address, int& size){
         decrypt(users[i]);
     }
 
-    size += 5;
+    size += 5; //increasing value of size accordingly
 
-    for (int i = size - 5; i < size; i++)
+    for (int i = size - 5; i < size; i++) //initializing empty slots
         users[i] = "null,null";
 
     return users;
@@ -1220,8 +1220,8 @@ void load::parseUsers(string* users, string* usernames, string* passwords, bool*
     int delimiterIndex;
     int lineSize;
     
-    for (int i = 0; i < size; i++){
-        delimiterIndex = 0;
+    for (int i = 0; i < size; i++){     //breaking each line at the ','
+        delimiterIndex = 0;             //wrote this before tokenizer(), keeping as probably more efficient
         lineSize = users[i].length();
         usernames[i] = "";
         passwords[i] = "";
@@ -1230,12 +1230,12 @@ void load::parseUsers(string* users, string* usernames, string* passwords, bool*
                 delimiterIndex = j;
                 break;
             }
-            usernames[i] += users[i][j];
+            usernames[i].push_back(users[i][j]); //would feel like cheating calling this a 2D array
         }
         for (int j = delimiterIndex + 1; j < lineSize; j++){
-            passwords[i] += users[i][j];
+            passwords[i].push_back(users[i][j]);
         }
-        slots[i] = (usernames[i] != "null");
+        slots[i] = (usernames[i] != "null"); 
     }
 }
 
@@ -1287,7 +1287,7 @@ void load::decrypt(string &text){
 }
 
 
-void store::login(const string address, string* usernames, string* passwords, bool* slots, const int size){
+void store::login(const string &address, string* usernames, string* passwords, bool* slots, const int &size){
     ofstream fout(address);
     string header = "Usernames,Passwords";
     encrypt(header);
@@ -1304,7 +1304,7 @@ void store::login(const string address, string* usernames, string* passwords, bo
     fout.close();
 }
 
-void store::writeLines(const string address, string* lines, const int size, string header){
+void store::writeLines(const string &address, string* lines, const int size, string header){
     ofstream fout(address);
     encrypt(header);
     fout << header << '\n';
@@ -1366,7 +1366,7 @@ string crud::viewUserProfiles(const string &address, int columns){
     int size = 0;
     string header = "headerNotFound";
     string *lines = load::fetchLines(address, size, header);
-    int margins = columns / 6;
+    int margins = columns / 7;
     int area = columns - 2 * margins;
 
     ss << setfill(' ') << setw(margins) << ' ' << setfill('*') << setw(area) << '*' << "\n\n"
@@ -1422,14 +1422,14 @@ bool crud::checkUsername(string username, string* usernames, const int size){
     if (sizeU > 16 || sizeU < 3 || username == "null")
         return 0;
         
-    for (char letter: username){
+    for (char letter: username){                //check if is alphanumeric
         if (!((letter >= 'A' && letter <= 'Z') || 
               (letter >= 'a' && letter <= 'z') || 
               (letter >= '0' && letter <= '9'))
            )
             return 0;
     }
-    for (int i = 0; i < size; i++)
+    for (int i = 0; i < size; i++)              //check if is unique
         if (username == usernames[i])
             return 0;
     
@@ -1540,13 +1540,13 @@ void crud::deleteUserProfile(bool isCreditor, const string &toDelete){
         delete[] lines;
         return;
     }
-    lines[slot] = '*' + lines[slot];
+    lines[slot] = '*' + lines[slot]; //mark username as deleted in profile
 
     store::writeLines(address, lines, size, header);
 
     delete[] lines;
 
-    if (isCreditor){
+    if (isCreditor){        //only creditor usernames in requests file
         string (*list)[6] = request::getList(addresses::requests, size, toDelete);
         for (int i = 0; i < size; i++){
             list[i][2] = '*' + list[i][2];
@@ -1554,14 +1554,14 @@ void crud::deleteUserProfile(bool isCreditor, const string &toDelete){
         request::writeList(list, size, addresses::requests);
         delete[] list;
     }
-
+                            //remove from loglist file (acceptedRequests.csv)
     string (*logList)[6] = request::getLogList(addresses::acceptedRequests, size, toDelete, isCreditor);
     for (int i = 0; i < size; i++)
         logList[i][isCreditor] = '*' + logList[i][isCreditor];
     
     request::writeLogList(logList, size, addresses::acceptedRequests);
     delete[] logList;
-
+                            //remove from payments
     string (*payList)[8] = payments::getList(addresses::payments, size, toDelete, isCreditor);
     for (int i = 0; i < size; i++)
         payList[i][isCreditor] = '*' + payList[i][isCreditor];
@@ -1691,7 +1691,7 @@ void request::create(const string &address, const string &activeUsername, int ma
     string DebtorName = "", city = "", dueDate = "";
     int installmentRate = 100, period = 0, quotation = 100;
     
-    cout << setw(margins) << ' ' << "Enter Total amount due in dollars: $";
+    cout << '\n' << setw(margins) << ' ' << "Enter Total amount due in dollars: $";
     cin >> amountDue;
     while (!cin || amountDue < 100 || amountDue > 99'999'999){
         cin.clear();
@@ -1929,15 +1929,15 @@ void request::editStatus(const string &address, int margins, const string &activ
                 if (activeUser == "null"){
                     list[requestNum][1] = "pending_B";
                     cout << setw(margins) << ' ' << "Enter the proposed commission rate in percentage\n"
-                        << setw(margins) << ' ' << "rate must be an integer between 0 and 100 inclusive\n"
-                        << setw(margins) << ' ' << ">> ";
+                         << setw(margins) << ' ' << "rate must be an integer between 0 and 100 inclusive\n"
+                         << setw(margins) << ' ' << ">> ";
                     list[requestNum][4] = to_string(getCommandInput(100, margins));
                 }
                 else {
                     list[requestNum][1] = "pending_A";
                     cout << setw(margins) << ' ' << "Enter the proposed commission rate in percentage\n"
-                        << setw(margins) << ' ' << "rate must be an integer between 0 and 100 inclusive\n"
-                        << setw(margins) << ' ' << ">> ";
+                         << setw(margins) << ' ' << "rate must be an integer between 0 and 100 inclusive\n"
+                         << setw(margins) << ' ' << ">> ";
                     list[requestNum][4] = to_string(getCommandInput(100, margins));
                 }
             }
