@@ -9,6 +9,12 @@
 
 using namespace std;
 
+struct loginInfo {
+    string username;
+    string password;
+    bool slots;
+};
+
 void winSize(int& rows, int& columns);
 
 namespace print{
@@ -24,14 +30,14 @@ namespace print{
 
 namespace load{
     string* users(const string &address, int& size);
-    void parseUsers(string* users, string* usernames, string* passwords, bool* slots, const int &size);
+    void parseUsers(string* users, loginInfo *loginInfo, const int &size);
     string* fetchLines(const string &address, int &size, string &header);
     void existsOrCreate(const string &address, string header);
     void decrypt(string &text);
 }
 
 namespace store{
-    void login(const string &address, string* usernames, string* passwords, bool* slots, const int &size);
+    void login(const string &address, loginInfo *loginInfo, const int &size);
     void writeLines(const string &address, string* lines, const int size, string header);
     void encrypt(string &text);
     char shiftLetter(char letter, int shift);
@@ -49,16 +55,16 @@ unsigned long long stringToDec(const string &num, const int &base = 10);
 string getSubString(const string &text, int start, int num);
 
 namespace crud{
-    string viewUsers(string* usernames,  string* passwords, bool* slots, int columns, const int size);
+    string viewUsers(loginInfo *users, int columns, const int size);
     string viewUserProfiles(const string &address, int columns);
-    void addUser(string &username, string &password, string* usernames, const int size, int margin);
-    bool checkUsername(string username, string* usernames, const int size);
+    void addUser(loginInfo &newUser, loginInfo* users, const int size, int margin);
+    bool checkUsername(string username, loginInfo* usernames, const int size);
     bool checkPassword(string password);
     void generatePwd(string &password);
-    int getEmptySlot(bool* slots, const int size);
-    int searchSlot(string item, string* items, int size);
-    void modifyUser(string &username, string &password, string* usernames, const int size, int margin);
-    void deleteUser(string* usernames, string* passwords, bool* slots, int index);
+    int getEmptySlot(loginInfo* slots, const int size);
+    int searchSlot(string item, loginInfo* items, int size);
+    void modifyUser(loginInfo &newUser, loginInfo* users, const int size, int margin);
+    void deleteUser(loginInfo &user);
     void deleteUserProfile(bool isCreditor, const string &toDelete);
 
     void createUserProfile(const string &address, int margins, string username);
@@ -126,26 +132,20 @@ int main(){
 
     int controllerSize = 0;                             //LOADING DATA
     string* users1 = load::users(addresses::controllerLogin, controllerSize);
-    string* controllers = new string[controllerSize];
-    string* controllerPwds = new string[controllerSize];
-    bool* controllerSlots = new bool[controllerSize];
-    load::parseUsers(users1, controllers, controllerPwds, controllerSlots, controllerSize);
+    loginInfo* controllers = new loginInfo[controllerSize];
+    load::parseUsers(users1, controllers, controllerSize);
     delete[] users1;
     
     int creditorSize = 0;
     string* users2 = load::users(addresses::creditorLogin, creditorSize);
-    string* creditors = new string[creditorSize];
-    string* creditorPwds = new string[creditorSize];
-    bool* creditorSlots = new bool[creditorSize];
-    load::parseUsers(users2, creditors, creditorPwds, creditorSlots, creditorSize);
+    loginInfo* creditors = new loginInfo[creditorSize];
+    load::parseUsers(users2, creditors, creditorSize);
     delete[] users2;
 
     int collectorSize = 0;
     string* users3 = load::users(addresses::collectorLogin, collectorSize);
-    string* collectors = new string[collectorSize];
-    string* collectorPwds = new string[collectorSize];
-    bool* collectorSlots = new bool[collectorSize];
-    load::parseUsers(users3, collectors, collectorPwds, collectorSlots, collectorSize);
+    loginInfo* collectors = new loginInfo[collectorSize];
+    load::parseUsers(users3, collectors, collectorSize);
     delete[] users3;
 
 
@@ -208,7 +208,7 @@ int main(){
                         messageStream << setw(margins) << "Invalid Username!\n\n";
                         break;
                     }
-                    if (passwordLogin != controllerPwds[slotLogin]){
+                    if (passwordLogin != controllers[slotLogin].password){
                         messageStream << setw(margins) << "Invalid Password!\n\n";
                         break; 
                     }
@@ -239,7 +239,7 @@ int main(){
                         messageStream << setw(margins) << "Invalid Username!\n\n";
                         break;
                     }
-                    if (passwordLogin != creditorPwds[slotLogin]){
+                    if (passwordLogin != creditors[slotLogin].password){
                         messageStream << setw(margins) << "Invalid Password!\n\n";
                         break; 
                     }
@@ -270,7 +270,7 @@ int main(){
                         messageStream << setw(margins) << "Invalid Username!\n\n";
                         break;
                     }
-                    if (passwordLogin != collectorPwds[slotLogin]){
+                    if (passwordLogin != collectors[slotLogin].password){
                         messageStream << setw(margins) << "Invalid Password!\n\n";
                         break; 
                     }
@@ -291,7 +291,7 @@ int main(){
 
                     switch (createUserType){
                         case 1:     //creditor
-                            emptySlot = crud::getEmptySlot(creditorSlots, creditorSize);
+                            emptySlot = crud::getEmptySlot(creditors, creditorSize);
                             if (emptySlot == -1){
                                 messageStream << "\n\t\tAll available slots already filled!\n"
                                               << "\t\tOnly 5 creditor accounts can be created per instance\n"
@@ -299,16 +299,16 @@ int main(){
                                 break;
                             }
 
-                            crud::modifyUser(creditors[emptySlot], creditorPwds[emptySlot], creditors, creditorSize, margins);
-                            creditorSlots[emptySlot] = 1;
+                            crud::modifyUser(creditors[emptySlot], creditors, creditorSize, margins);
+                            creditors[emptySlot].slots = 1;
 
-                            messageStream << setw(columns / 5) << ' ' << "New Creditor " << creditors[emptySlot]
+                            messageStream << setw(columns / 5) << ' ' << "New Creditor " << creditors[emptySlot].username
                                           << " added to the system!\n"
-                                          << setw(columns / 5) << ' ' << "Password: " << creditorPwds[emptySlot]
+                                          << setw(columns / 5) << ' ' << "Password: " << creditors[emptySlot].password
                                           << "\n\n"; 
                             break;
                         case 2:     //Collectors
-                            emptySlot = crud::getEmptySlot(collectorSlots, collectorSize);
+                            emptySlot = crud::getEmptySlot(collectors, collectorSize);
                             if (emptySlot == -1){
                                 messageStream << "\n\t\tAll available slots already filled!\n"
                                               << "\t\tOnly 5 collector accounts can be created per instance\n"
@@ -316,12 +316,12 @@ int main(){
                                 break;
                             }
 
-                            crud::modifyUser(collectors[emptySlot], collectorPwds[emptySlot], collectors, collectorSize, margins);
-                            collectorSlots[emptySlot] = 1;
+                            crud::modifyUser(collectors[emptySlot], collectors, collectorSize, margins);
+                            collectors[emptySlot].slots = 1;
 
-                            messageStream << setw(columns / 5) << ' ' << "New Collector " << collectors[emptySlot]
+                            messageStream << setw(columns / 5) << ' ' << "New Collector " << collectors[emptySlot].username
                                           << " added to the system!\n"
-                                          << setw(columns / 5) << ' ' << "Password: " << collectorPwds[emptySlot]
+                                          << setw(columns / 5) << ' ' << "Password: " << collectors[emptySlot].password
                                           << "\n\n";
                             break;
                         default:
@@ -360,7 +360,7 @@ int main(){
 
                     switch (createUserType){
                         case 1:     //creditor
-                            emptySlot = crud::getEmptySlot(creditorSlots, creditorSize);
+                            emptySlot = crud::getEmptySlot(creditors, creditorSize);
                             if (emptySlot == -1){
                                 messageStream << "\n\t\tAll available slots already filled!\n"
                                               << "\t\tOnly 5 creditors can be added per instance\n"
@@ -368,16 +368,16 @@ int main(){
                                 break;
                             }
 
-                            crud::addUser(creditors[emptySlot], creditorPwds[emptySlot], creditors, creditorSize, margins);
-                            creditorSlots[emptySlot] = 1;
+                            crud::addUser(creditors[emptySlot], creditors, creditorSize, margins);
+                            creditors[emptySlot].slots = 1;
 
-                            messageStream << setw(columns / 5) << ' ' << "New Creditor " << creditors[emptySlot]
+                            messageStream << setw(columns / 5) << ' ' << "New Creditor " << creditors[emptySlot].username
                                           << " added to the system!\n"
-                                          << setw(columns / 5) << ' ' << "Password: " << creditorPwds[emptySlot]
+                                          << setw(columns / 5) << ' ' << "Password: " << creditors[emptySlot].password
                                           << "\n\n"; 
                             break;
                         case 2:     //Collectors
-                            emptySlot = crud::getEmptySlot(collectorSlots, collectorSize);
+                            emptySlot = crud::getEmptySlot(collectors, collectorSize);
                             if (emptySlot == -1){
                                 messageStream << "\n\t\tAll available slots already filled!\n"
                                               << "\t\tOnly 5 collectors can be added per instance\n"
@@ -385,16 +385,16 @@ int main(){
                                 break;
                             }
 
-                            crud::addUser(collectors[emptySlot], collectorPwds[emptySlot], collectors, collectorSize, margins);
-                            collectorSlots[emptySlot] = 1;
+                            crud::addUser(collectors[emptySlot], collectors, collectorSize, margins);
+                            collectors[emptySlot].slots = 1;
 
-                            messageStream << setw(columns / 5) << ' ' << "New Collector " << collectors[emptySlot]
+                            messageStream << setw(columns / 5) << ' ' << "New Collector " << collectors[emptySlot].username
                                           << " added to the system!\n"
-                                          << setw(columns / 5) << ' ' << "Password: " << collectorPwds[emptySlot]
+                                          << setw(columns / 5) << ' ' << "Password: " << collectors[emptySlot].password
                                           << "\n\n";
                             break;
                         case 3:     //Controllers
-                            emptySlot = crud::getEmptySlot(controllerSlots, controllerSize);
+                            emptySlot = crud::getEmptySlot(controllers, controllerSize);
                             if (emptySlot == -1){
                                 messageStream << "\n\t\tAll available slots already filled!\n"
                                               << "\t\tOnly 5 controllers can be added per instance\n"
@@ -402,12 +402,12 @@ int main(){
                                 break;
                             }
 
-                            crud::addUser(controllers[emptySlot], controllerPwds[emptySlot], controllers, controllerSize, margins);
-                            controllerSlots[emptySlot] = 1;
+                            crud::addUser(controllers[emptySlot], controllers, controllerSize, margins);
+                            controllers[emptySlot].slots = 1;
 
-                            messageStream << setw(columns / 5) << ' ' << "New Controller " << controllers[emptySlot]
+                            messageStream << setw(columns / 5) << ' ' << "New Controller " << controllers[emptySlot].username
                                           << " added to the system!\n"
-                                          << setw(columns / 5) << ' ' << "Password: " << controllerPwds[emptySlot]
+                                          << setw(columns / 5) << ' ' << "Password: " << controllers[emptySlot].password
                                           << "\n\n";
                             break;
                         default:
@@ -441,7 +441,7 @@ int main(){
                                 break;
                             }
 
-                            crud::modifyUser(creditors[modifySlot], creditorPwds[modifySlot], creditors, creditorSize, margins);
+                            crud::modifyUser(creditors[modifySlot], creditors, creditorSize, margins);
                             messageStream << setw(columns / 5) << ' ' << "User updated Successfully!\n\n";
                             
                             break;
@@ -460,7 +460,7 @@ int main(){
                                 break;
                             }
 
-                            crud::modifyUser(collectors[modifySlot], collectorPwds[modifySlot], collectors, collectorSize, margins);
+                            crud::modifyUser(collectors[modifySlot], collectors, collectorSize, margins);
                             messageStream << setw(columns / 5) << ' ' << "User updated Successfully!\n\n";
                             break;
                         }
@@ -478,7 +478,7 @@ int main(){
                                 break;
                             }
 
-                            crud::modifyUser(controllers[modifySlot], controllerPwds[modifySlot], controllers, controllerSize, margins);
+                            crud::modifyUser(controllers[modifySlot], controllers, controllerSize, margins);
                             messageStream << setw(columns / 5) << ' ' << "User updated Successfully!\n\n";
                             break;
                         }
@@ -512,7 +512,7 @@ int main(){
                                 messageStream << setw(margins) << "No creditor with the username [" << toDelete << "] found\n\n";
                                 break;
                             }
-                            crud::deleteUser(creditors, creditorPwds, creditorSlots, deleteSlot);
+                            crud::deleteUser(creditors[deleteSlot]);
                             crud::deleteUserProfile(true, toDelete);
 
                             messageStream << setw(margins) << "Creditor removed successfully!" << "\n\n";
@@ -532,7 +532,7 @@ int main(){
                                 messageStream << setw(margins) << "No collector with the username [" << toDelete << "] found\n\n";
                                 break;
                             }
-                            crud::deleteUser(collectors, collectorPwds, collectorSlots, deleteSlot);
+                            crud::deleteUser(collectors[deleteSlot]);
                             crud::deleteUserProfile(false, toDelete);
 
                             messageStream << setw(margins) << "Collector removed successfully!" << "\n\n";
@@ -556,7 +556,7 @@ int main(){
                                 messageStream << setw(margins) << "You cannot delete yourself!\n\n";
                                 break;
                             }
-                            crud::deleteUser(controllers, controllerPwds, controllerSlots, deleteSlot);
+                            crud::deleteUser(controllers[deleteSlot]);
 
                             messageStream << setw(margins) << "Controller removed successfully!" << "\n\n";
 
@@ -581,7 +581,7 @@ int main(){
                             if (viewType){
                                 messageStream << crud::viewUserProfiles(addresses::creditorProfList, columns);
                             } else {
-                                messageStream << crud::viewUsers(creditors, creditorPwds, creditorSlots, columns, creditorSize);
+                                messageStream << crud::viewUsers(creditors, columns, creditorSize);
                             }
                             break;
                         }
@@ -592,12 +592,12 @@ int main(){
                             if (viewType){
                                 messageStream << crud::viewUserProfiles(addresses::collectorProfList, columns);
                             } else {
-                                messageStream << crud::viewUsers(collectors, collectorPwds, collectorSlots, columns, collectorSize);
+                                messageStream << crud::viewUsers(collectors, columns, collectorSize);
                             }
                             break;
                         }
                         case 3:
-                            messageStream << crud::viewUsers(controllers, controllerPwds, controllerSlots, columns, controllerSize);
+                            messageStream << crud::viewUsers(controllers, columns, controllerSize);
                             break;
                         default:
                             messageStream << "\nUnexpected Input value for int viewUserType\n";
@@ -930,18 +930,14 @@ int main(){
 
     } while (on);    //END of all encompassing loop 
 
-    store::login(addresses::controllerLogin, controllers, controllerPwds, controllerSlots, controllerSize);
+    store::login(addresses::controllerLogin, controllers, controllerSize);
     delete[] controllers;
-    delete[] controllerPwds;
-    delete[] controllerSlots;
-    store::login(addresses::creditorLogin, creditors, creditorPwds, creditorSlots, creditorSize);
+
+    store::login(addresses::creditorLogin, creditors, creditorSize);
     delete[] creditors;
-    delete[] creditorPwds;
-    delete[] creditorSlots;
-    store::login(addresses::collectorLogin, collectors, collectorPwds, collectorSlots, collectorSize);
+
+    store::login(addresses::collectorLogin, collectors, collectorSize);
     delete[] collectors;
-    delete[] collectorPwds;
-    delete[] collectorSlots;
 
     if (!on) 
         cout << "\n\tProgram Successfully Terminated!\n\n";
@@ -1216,26 +1212,26 @@ string* load::users(const string &address, int& size){
     return users;
 }
 
-void load::parseUsers(string* users, string* usernames, string* passwords, bool* slots, const int &size){
+void load::parseUsers(string* users, loginInfo *loginInfo, const int &size){
     int delimiterIndex;
     int lineSize;
     
     for (int i = 0; i < size; i++){     //breaking each line at the ','
         delimiterIndex = 0;             //wrote this before tokenizer(), keeping as probably more efficient
         lineSize = users[i].length();
-        usernames[i] = "";
-        passwords[i] = "";
+        loginInfo[i].username = "";
+        loginInfo[i].password = "";
         for (int j = 0; j < lineSize; j++){
             if (users[i][j] == ','){
                 delimiterIndex = j;
                 break;
             }
-            usernames[i].push_back(users[i][j]); //would feel like cheating calling this a 2D array
+            loginInfo[i].username.push_back(users[i][j]); //would feel like cheating calling this a 2D array
         }
         for (int j = delimiterIndex + 1; j < lineSize; j++){
-            passwords[i].push_back(users[i][j]);
+            loginInfo[i].password.push_back(users[i][j]);
         }
-        slots[i] = (usernames[i] != "null"); 
+        loginInfo[i].slots = (loginInfo[i].username != "null"); 
     }
 }
 
@@ -1287,7 +1283,7 @@ void load::decrypt(string &text){
 }
 
 
-void store::login(const string &address, string* usernames, string* passwords, bool* slots, const int &size){
+void store::login(const string &address, loginInfo *loginInfo, const int &size){
     ofstream fout(address);
     string header = "Usernames,Passwords";
     encrypt(header);
@@ -1295,8 +1291,8 @@ void store::login(const string &address, string* usernames, string* passwords, b
     string line = "";
 
     for (int i = 0; i < size; i++)
-        if (slots[i]){
-            line = usernames[i] + ',' + passwords[i];
+        if (loginInfo[i].slots){
+            line = loginInfo[i].username + ',' + loginInfo[i].password;
             encrypt(line);
             fout << line << '\n';
         }
@@ -1397,7 +1393,7 @@ string crud::viewUserProfiles(const string &address, int columns){
     return ss.str();
 }
 
-string crud::viewUsers(string* usernames,  string* passwords, bool* slots, int columns, const int size){
+string crud::viewUsers(loginInfo* users, int columns, const int size){
     stringstream ss;
     int margins = columns / 3;
     int area = columns - 2 * margins;
@@ -1407,9 +1403,9 @@ string crud::viewUsers(string* usernames,  string* passwords, bool* slots, int c
     ss << setw(margins) << ' ' << setfill('*') << setw(area) << '*' << "\n\n" << setfill(' ');
 
     for (int i = 0; i < size; i++){
-        if (slots[i]){
-            ss << setw(margins) << ' ' << setw(area / 2) << usernames[i]
-               << setw(area / 2) << passwords[i] << "\n\n";
+        if (users[i].slots){
+            ss << setw(margins) << ' ' << setw(area / 2) << users[i].username
+               << setw(area / 2) << users[i].password << "\n\n";
         }
     }
     ss << setw(margins) << ' ' << setfill('*') << setw(area) << '*' << "\n\n" << setfill(' ');
@@ -1417,7 +1413,7 @@ string crud::viewUsers(string* usernames,  string* passwords, bool* slots, int c
     return ss.str();
 }
 
-bool crud::checkUsername(string username, string* usernames, const int size){
+bool crud::checkUsername(string username, loginInfo* usernames, const int size){
     int sizeU = username.length();
     if (sizeU > 16 || sizeU < 3 || username == "null")
         return 0;
@@ -1430,7 +1426,7 @@ bool crud::checkUsername(string username, string* usernames, const int size){
             return 0;
     }
     for (int i = 0; i < size; i++)              //check if is unique
-        if (username == usernames[i])
+        if (username == usernames[i].username)
             return 0;
     
     return 1;
@@ -1466,29 +1462,29 @@ void crud::generatePwd(string &password){
     }
 }
 
-int crud::getEmptySlot(bool* slots, const int size){
+int crud::getEmptySlot(loginInfo* slots, const int size){
     for (int i = 0; i < size; i++)
-        if (!slots[i])
+        if (!slots[i].slots)
             return i;
     return -1;
 }
 
-int crud::searchSlot(string item, string* items, int size){
+int crud::searchSlot(string item, loginInfo* items, int size){
     if (item == "null")
         return -1;
     for (int i = 0; i < size; i++)
-        if (item == items[i])
+        if (item == items[i].username)
             return i;
     return -1;
 }
 
-void crud::addUser(string &username, string &password, string* usernames, const int size, int margin){
+void crud::addUser(loginInfo &newUser, loginInfo* users, const int size, int margin){
     string newName = "";
     cout << setfill(' ') << '\n' 
          << setw(margin - 18) << ' ' << "Enter new username: ";
     cin.ignore(255, '\n');
     getline(cin, newName);
-    while (!checkUsername(newName, usernames, size)){
+    while (!checkUsername(newName, users, size)){
         cout << setw(margin) << "Invalid username! " << '\n'
              << setw(margin) << "Username must be alphanumeric, " << '\n'
              << setw(margin) << "between 3 and 16 characters, " << '\n'
@@ -1496,15 +1492,15 @@ void crud::addUser(string &username, string &password, string* usernames, const 
              << setw(margin - 18) << ' ' << "Enter new username: ";
         getline(cin, newName);
     }
-    username = newName;
-    generatePwd(password);
+    newUser.username = newName;
+    generatePwd(newUser.password);
 }
 
-void crud::modifyUser(string &username, string &password, string* usernames, const int size, int margin){
+void crud::modifyUser(loginInfo &newUser, loginInfo* users, const int size, int margin){
     
-    addUser(username, password, usernames, size, margin);
+    addUser(newUser, users, size, margin);
     
-    cout << setw(margin) << "New Generated password" << ": " << password << '\n'
+    cout << setw(margin) << "New Generated password" << ": " << newUser.password << '\n'
          << setw(margin) << "Change password? (1/0) " << ">> ";
     int change = getCommandInput(1, margin);
 
@@ -1512,21 +1508,21 @@ void crud::modifyUser(string &username, string &password, string* usernames, con
         cout << setfill(' ') << '\n' 
              << setw(margin - 18) << ' ' << "Enter new password: ";
         cin.ignore(255, '\n');
-        getline(cin, password);
-        while (!checkPassword(password)){
+        getline(cin, newUser.password);
+        while (!checkPassword(newUser.password)){
             cout << setw(margin) << "Invalid password! " << '\n'
                 << setw(margin) << "Password must be alphanumeric, " << '\n'
                 << setw(margin) << "and between 3 and 16 characters " << '\n'
                 << setw(margin - 18) << ' ' << "Enter new password: ";
-            getline(cin, password);
+            getline(cin, newUser.password);
         }
     }
 }
 
-void crud::deleteUser(string* usernames, string* passwords, bool* slots, int index){
-    usernames[index] = "null";
-    passwords[index] = "null";
-    slots[index] = 0;
+void crud::deleteUser(loginInfo &user){
+    user.username = "null";
+    user.password = "null";
+    user.slots = 0;
 }
 
 void crud::deleteUserProfile(bool isCreditor, const string &toDelete){
